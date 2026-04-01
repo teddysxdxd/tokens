@@ -24,3 +24,6 @@ Este proyecto consiste en una aplicación web integral diseñada para cifrar, al
 3. Ejecute el comando para construir e iniciar los contenedores:
    ```bash
    docker compose up --build
+4. Para visualizar el sistema debe de arrastrar el index a cualquier ventana del navegador de su preferencia:
+   ```bash
+   index.html   
