@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: db_tarea3_analisis
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: secure_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data_tarea:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: api_tarea3_analisis
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/secure_db
+    depends_on:
+      - db
+
+volumes:
+  db_data_tarea:

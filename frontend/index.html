@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cifrador Seguro UMG - Tarea 3</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f0f2f5; padding-top: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.08); margin-bottom: 25px; }
+        .card-header { border-radius: 15px 15px 0 0 !important; font-weight: bold; }
+        .btn-primary { background-color: #003366; border: none; } /* Color institucional UMG */
+        .btn-primary:hover { background-color: #002244; }
+        .hidden { display: none; }
+        #historyTable { background: white; border-radius: 10px; overflow: hidden; }
+        .token-badge { font-family: monospace; color: #d63384; background: #f8f9fa; padding: 2px 5px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="text-center mb-5">
+        <h1 class="display-5 fw-bold text-dark">Sistema de Cifrado Seguro</h1>
+        <p class="text-muted">Análisis de Sistemas - Ingeniería UMG</p>
+    </div>
+
+    <div id="loginSection" class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white text-center">Acceso al Sistema</div>
+                <div class="card-body p-4">
+                    <p class="small text-center text-muted mb-4">Ingrese sus credenciales. Si el usuario no existe, se creará automáticamente.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nombre de Usuario</label>
+                        <input type="text" id="usernameInput" class="form-control" placeholder="ej: tedi.castellanos" autocomplete="off">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" id="passwordInput" class="form-control" placeholder="••••••••">
+                    </div>
+                    
+                    <button class="btn btn-primary w-100 py-2" onclick="handleAuth()">Ingresar / Registrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainSection" class="hidden">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="alert alert-light border mb-0 py-2">
+                👤 Usuario: <strong id="currentUserDisplay" class="text-primary"></strong>
+            </div>
+            <button class="btn btn-outline-danger btn-sm" onclick="location.reload()">Cerrar Sesión</button>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">Nuevo Cifrado</div>
+                    <div class="card-body">
+                        <label class="form-label">Texto Original:</label>
+                        <textarea id="textToEncrypt" class="form-control mb-3" rows="3" placeholder="Escriba el mensaje secreto aquí..."></textarea>
+                        
+                        <button class="btn btn-success w-100" onclick="encryptText()">
+                            Cifrar y Almacenar
+                        </button>
+
+                        <div id="encryptResult" class="mt-4 alert alert-info hidden">
+                            <strong>Token de acceso:</strong><br>
+                            <span id="generatedToken" class="token-badge fs-5"></span>
+                            <hr>
+                            <small>Guarde este token para recuperar el texto más tarde.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">Recuperar Texto</div>
+                    <div class="card-body">
+                        <label class="form-label">Ingrese el Token:</label>
+                        <div class="input-group mb-3">
+                            <input type="text" id="tokenToDecrypt" class="form-control" placeholder="UUID del token...">
+                            <button class="btn btn-dark" onclick="decryptText()">Descifrar</button>
+                        </div>
+
+                        <div id="decryptResult" class="mt-4 p-3 border rounded bg-light hidden">
+                            <h6 class="text-muted border-bottom pb-2">Resultado del Descifrado:</h6>
+                            <p id="decryptedOriginalText" class="fs-4 fw-bold text-success mb-1"></p>
+                            <div class="small text-muted mt-2">
+                                <b>Autor:</b> <span id="recordOwner"></span><br>
+                                <b>Fecha:</b> <span id="recordTimestamp"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <span>Mi Historial Personal</span>
+                <button class="btn btn-sm btn-outline-light" onclick="loadHistory()">🔄 Actualizar</button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="historyTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha y Hora (UTC)</th>
+                                <th>Token Generado</th>
+                                <th class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:5000/api';
+    let currentUser = '';
+
+    // --- FUNCIÓN DE AUTENTICACIÓN (LOGIN/REGISTRO) ---
+    async function handleAuth() {
+        const userField = document.getElementById('usernameInput').value.trim();
+        const passField = document.getElementById('passwordInput').value;
+
+        if (!userField || !passField) {
+            return alert('Por favor, ingrese usuario y contraseña.');
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/auth`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    username: userField, // El backend lo pasará a .lower()
+                    password: passField 
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                currentUser = data.username;
+                document.getElementById('currentUserDisplay').innerText = currentUser;
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('mainSection').classList.remove('hidden');
+                loadHistory();
+            } else {
+                alert('Error: ' + (data.error || 'Credenciales inválidas'));
+            }
+        } catch (error) {
+            console.error('Error en Auth:', error);
+            alert('No se pudo conectar con el servidor (Flask). Asegúrese de que Docker esté corriendo.');
+        }
+    }
+
+    // --- FUNCIÓN PARA CIFRAR ---
+    async function encryptText() {
+        const text = document.getElementById('textToEncrypt').value;
+        if (!text) return alert('Escriba un texto para cifrar.');
+
+        try {
+            const response = await fetch(`${API_URL}/encrypt`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ text: text, username: currentUser })
+            });
+            const data = await response.json();
+            
+            if (data.token) {
+                document.getElementById('generatedToken').innerText = data.token;
+                document.getElementById('encryptResult').classList.remove('hidden');
+                document.getElementById('textToEncrypt').value = ''; 
+                loadHistory(); 
+            }
+        } catch (error) { console.error('Error:', error); }
+    }
+
+    // --- FUNCIÓN PARA DESCIFRAR ---
+    async function decryptText() {
+        const token = document.getElementById('tokenToDecrypt').value.trim();
+        if (!token) return alert('Ingrese un token válido.');
+
+        try {
+            const response = await fetch(`${API_URL}/decrypt`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token: token })
+            });
+            const data = await response.json();
+            
+            if (response.ok) {
+                document.getElementById('decryptedOriginalText').innerText = data.original_text;
+                document.getElementById('recordOwner').innerText = data.owner;
+                document.getElementById('recordTimestamp').innerText = data.timestamp;
+                document.getElementById('decryptResult').classList.remove('hidden');
+            } else {
+                alert(data.error || 'Token no encontrado');
+                document.getElementById('decryptResult').classList.add('hidden');
+            }
+        } catch (error) { console.error('Error:', error); }
+    }
+
+    // --- FUNCIÓN CARGAR HISTORIAL ---
+    async function loadHistory() {
+        if (!currentUser) return;
+        
+        try {
+            const response = await fetch(`${API_URL}/history/${currentUser}`);
+            const history = await response.json();
+            
+            const tbody = document.getElementById('historyBody');
+            tbody.innerHTML = ''; 
+
+            if (history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">Aún no tienes registros de cifrado.</td></tr>';
+                return;
+            }
+
+            history.forEach(record => {
+                const row = `<tr>
+                    <td>${record.timestamp}</td>
+                    <td><span class="token-badge">${record.token}</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-link" onclick="useToken('${record.token}')">Usar Token</button>
+                    </td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        } catch (error) { console.error('Error cargando historial:', error); }
+    }
+
+    // Utilidad para copiar token al input de descifrado
+    function useToken(token) {
+        document.getElementById('tokenToDecrypt').value = token;
+        window.scrollTo(0, 0);
+    }
+</script>
+
+</body>
+</html>
