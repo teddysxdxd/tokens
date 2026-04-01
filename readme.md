@@ -25,8 +25,8 @@ Este proyecto consiste en una aplicación web integral diseñada para cifrar, al
    ```bash
    docker compose up --build
 4. Verifique que los contenedores flask_backend_container y secure_db_container se encuentren en estado "Running".   
-    a.	✔ Container api_tarea3_analisis  
-    b.	 ✔ Container db_tarea3_analisis  
+    ✔ Container api_tarea3_analisis  
+    ✔ Container db_tarea3_analisis  
 
 5. Para visualizar el sistema debe de arrastrar el index a cualquier ventana del navegador de su preferencia
    
